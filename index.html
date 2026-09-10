@@ -542,7 +542,7 @@
       var best = mine.reduce(function(a,b){ return b.time < a.time ? b : a; });
       statEl.innerHTML = 'Your best: <b>' + best.time.toFixed(2) + 's</b> over ' + mine.length + ' play' + (mine.length>1?'s':'');
     } else {
-      statEl.innerHTML = 'You haven\'t played yet — go find ' + (config ? config.targetName : 'them') + '.';
+      statEl.innerHTML = 'You haven\'t played yet. go find ' + (config ? config.targetName : 'them') + '.';
     }
 
     // Deduplicate for home screen
