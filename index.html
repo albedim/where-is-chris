@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Where’s cmgriffing?</title>
+<title>Where's cmgriffing?</title>
 <link rel="icon" type="image/x-icon" href="/images/self-portrait.ico">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -382,7 +382,6 @@
       </div>
       <button class="btn btn-primary btn-block" id="loginBtn">Let's go</button>
     </section>
-
     <section class="screen" id="screen-home">
       <h1 class="greeting">Hey <span class="accent" id="homeUsername">there</span> 👋</h1>
       <p class="lede" id="homeSub">OH NO! <span id="homeTargetName">Chris</span> pushed to the main branch and hid in the crowd, find him as fast as you can.</p>
@@ -446,13 +445,16 @@
 <script>
 (function(){
 
+  // localStorage is used ONLY to remember which name this device is
+  // playing as (so returning visitors land on "Hey <name>" instead of the
+  // login screen). The leaderboard itself has exactly one source of
+  // truth: the server. No local copy, no merging, no dedup-by-timestamp
+  // hacks — whatever the API returns is what gets shown.
   var K_USERNAME = 'stf_username';
-  var K_SCORES = 'stf_scores'; // array of {username, time, timestamp} played on this device
 
   var config = null;
   var cellData = null;
-  var seedLeaderboard = [];
-  var localScores = loadLocalScores();
+  var leaderboard = [];   // always comes straight from the server
   var currentCell = null;
   var timerStart = null;
   var timerInterval = null;
@@ -461,15 +463,6 @@
   // The absolute URL for the Vercel API
   var API_URL = 'https://project-b63x8.vercel.app/api/leaderboard';
 
-  function loadLocalScores(){
-    try{
-      var raw = localStorage.getItem(K_SCORES);
-      return raw ? JSON.parse(raw) : [];
-    }catch(e){ return []; }
-  }
-  function saveLocalScores(){
-    localStorage.setItem(K_SCORES, JSON.stringify(localScores));
-  }
   function getUsername(){
     return localStorage.getItem(K_USERNAME);
   }
@@ -477,8 +470,16 @@
     localStorage.setItem(K_USERNAME, name);
   }
 
-  function combinedLeaderboard(){
-    return seedLeaderboard.concat(localScores);
+  function fetchLeaderboard(){
+    return fetch(API_URL)
+      .then(function(r){ return r.json(); })
+      .then(function(data){
+        leaderboard = Array.isArray(data) ? data : [];
+      })
+      .catch(function(){
+        // server unreachable — leave `leaderboard` as whatever we last had
+        // (possibly still empty on first load, that's fine)
+      });
   }
 
   var screens = {};
@@ -491,12 +492,10 @@
   Promise.all([
     fetch('data/config.json').then(r => r.json()),
     fetch('data/cells.json').then(r => r.json()),
-    // GET: Fetch the live leaderboard from the Vercel backend using the absolute URL
-    fetch(API_URL).then(r => r.json()).catch(function(){ return []; })
+    fetchLeaderboard()
   ]).then(function(results){
     config = results[0];
     cellData = results[1];
-    seedLeaderboard = results[2] || [];
 
     document.getElementById('loginTargetName').textContent = config.targetName;
     document.getElementById('homeTargetName').textContent = config.targetName;
@@ -507,7 +506,7 @@
 
     init();
   }).catch(function(err){
-    document.body.innerHTML = '<main><p style="padding:40px;color:#f5f1e8">Could not load game data. Make sure data/config.json, data/cells.json and data/leaderboard.json exist. (' + err + ')</p></main>';
+    document.body.innerHTML = '<main><p style="padding:40px;color:#f5f1e8">Could not load game data. Make sure data/config.json and data/cells.json exist. (' + err + ')</p></main>';
   });
 
   function init(){
@@ -537,23 +536,16 @@
   function renderHome(user){
     document.getElementById('homeUsername').textContent = user;
 
-    var mine = localScores.filter(function(s){ return s.username === user; });
+    var mine = leaderboard.filter(function(s){ return s.username === user; });
     var statEl = document.getElementById('homeBestStat');
     if(mine.length){
       var best = mine.reduce(function(a,b){ return b.time < a.time ? b : a; });
       statEl.innerHTML = 'Your best: <b>' + best.time.toFixed(2) + 's</b> over ' + mine.length + ' play' + (mine.length>1?'s':'');
     } else {
-      statEl.innerHTML = "You haven\'t played yet, let's go find " + (config ? config.targetName : 'them') + ".";
+      statEl.innerHTML = "You haven't played yet, let's go find " + (config ? config.targetName : 'them') + ".";
     }
 
-    // Deduplicate for home screen
-    var allMap = new Map();
-    combinedLeaderboard().forEach(function(entry) {
-      allMap.set(entry.timestamp, entry);
-    });
-    var all = Array.from(allMap.values());
-
-    var latest = all
+    var latest = leaderboard
       .slice()
       .sort(function(a,b){ return b.timestamp - a.timestamp; })
       .slice(0,5);
@@ -562,8 +554,8 @@
 
   document.getElementById('playBtn').addEventListener('click', startGame);
   document.getElementById('playAgainBtn').addEventListener('click', startGame);
-  document.getElementById('viewLeaderboardBtn').addEventListener('click', function(){ renderLeaderboard(); showScreen('screen-leaderboard'); });
-  document.getElementById('resultLeaderboardBtn').addEventListener('click', function(){ renderLeaderboard(); showScreen('screen-leaderboard'); });
+  document.getElementById('viewLeaderboardBtn').addEventListener('click', function(){ fetchLeaderboard().then(function(){ renderLeaderboard(); showScreen('screen-leaderboard'); }); });
+  document.getElementById('resultLeaderboardBtn').addEventListener('click', function(){ fetchLeaderboard().then(function(){ renderLeaderboard(); showScreen('screen-leaderboard'); }); });
   document.getElementById('backHomeBtn').addEventListener('click', function(){ renderHome(getUsername()); showScreen('screen-home'); });
 
   function startGame(){
@@ -664,34 +656,32 @@
 
     var user = getUsername();
     var entry = { username: user, time: Math.round(elapsed * 100) / 100, timestamp: Date.now() };
-    
-    // Save locally for immediate offline feedback
-    localScores.push(entry);
-    saveLocalScores();
 
-    // POST: Send the new score to the Vercel backend using the absolute URL
+    document.getElementById('resultTime').textContent = entry.time.toFixed(2) + 's';
+    document.getElementById('resultBadge').innerHTML = '';
+
+    // POST straight to the server. It returns the full updated leaderboard,
+    // which becomes our new local copy of "the truth" — nothing gets
+    // written to localStorage.
     fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(entry)
     })
-    .then(r => r.json())
-    .then(data => {
-      // Keep local seedLeaderboard in sync with the server response
-      if (data.data) seedLeaderboard = data.data; 
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      if (data && Array.isArray(data.data)) {
+        leaderboard = data.data;
+      }
+      var mine = leaderboard.filter(function(s){ return s.username === user; });
+      var best = mine.length ? mine.reduce(function(a,b){ return b.time < a.time ? b : a; }) : entry;
+      if (best.timestamp === entry.timestamp) {
+        document.getElementById('resultBadge').innerHTML = '<span class="best-badge">New personal best</span>';
+      }
     })
-    .catch(err => console.error("Failed to sync leaderboard", err));
-
-    document.getElementById('resultTime').textContent = entry.time.toFixed(2) + 's';
-
-    var mine = localScores.filter(function(s){ return s.username === user; });
-    var best = mine.reduce(function(a,b){ return b.time < a.time ? b : a; });
-    var badge = document.getElementById('resultBadge');
-    if(best.timestamp === entry.timestamp){
-      badge.innerHTML = '<span class="best-badge">New personal best</span>';
-    } else {
-      badge.innerHTML = '';
-    }
+    .catch(function(err){
+      console.error("Failed to submit score", err);
+    });
 
     showScreen('screen-result');
   }
@@ -714,44 +704,17 @@
   }
 
   function renderLeaderboard(){
-    // GET: Pull the absolute latest from the backend before showing using the absolute URL
-    fetch(API_URL)
-      .then(r => r.json())
-      .then(data => {
-         if(Array.isArray(data)) seedLeaderboard = data;
-         drawLeaderboard();
-      })
-      .catch(err => {
-         drawLeaderboard(); // Fallback to drawing what we already have
-      });
-  }
-
-  function drawLeaderboard() {
     var user = getUsername();
-    
-    // Create a Map to deduplicate entries by timestamp so localScores don't double up 
-    // against the seedLeaderboard if they were successfully saved to the backend.
-    var allMap = new Map();
-    combinedLeaderboard().forEach(function(entry) {
-      allMap.set(entry.timestamp, entry);
-    });
-    var all = Array.from(allMap.values());
 
-    var fastest = all.slice().sort(function(a,b){ return a.time - b.time; }).slice(0,5);
-    var latest = all.slice().sort(function(a,b){ return b.timestamp - a.timestamp; }).slice(0,5);
+    var fastest = leaderboard.slice().sort(function(a,b){ return a.time - b.time; }).slice(0,5);
+    var latest = leaderboard.slice().sort(function(a,b){ return b.timestamp - a.timestamp; }).slice(0,5);
 
     renderList(document.getElementById('fastestList'), fastest, user, true);
     renderList(document.getElementById('latestList'), latest, user, false);
   }
 
   document.getElementById('exportBtn').addEventListener('click', function(){
-    // Deduplicate before export
-    var allMap = new Map();
-    combinedLeaderboard().forEach(function(entry) {
-      allMap.set(entry.timestamp, entry);
-    });
-    var all = Array.from(allMap.values()).sort(function(a,b){ return a.timestamp - b.timestamp; });
-
+    var all = leaderboard.slice().sort(function(a,b){ return a.timestamp - b.timestamp; });
     var blob = new Blob([JSON.stringify(all, null, 2)], {type: 'application/json'});
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
