@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spot the Face</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d0d0d;
+    --paper:#f4f2ec;
+    --white:#ffffff;
+    --blue:#2b4bff;
+    --red:#ff3b30;
+    --green:#8bff5a;
+    --line: var(--ink);
+    --shadow: 6px 6px 0 var(--ink);
+    --shadow-sm: 4px 4px 0 var(--ink);
+  }
+
+  *{ box-sizing: border-box; }
+
+  html,body{
+    margin:0;
+    padding:0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family:'Space Grotesk', system-ui, sans-serif;
+    min-height:100vh;
+  }
+
+  body{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    min-height:100vh;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .brand{
+    width:100%;
+    max-width:520px;
+    padding:22px 20px 0 20px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+  }
+
+  .brand-mark{
+    font-weight:700;
+    font-size:16px;
+    letter-spacing:-0.01em;
+    text-transform:uppercase;
+    border: 3px solid var(--ink);
+    padding: 4px 10px;
+    background: var(--white);
+    box-shadow: 3px 3px 0 var(--ink);
+  }
+  .brand-mark b{ color: var(--blue); }
+
+  .switch-player{
+    font-size:12px;
+    font-weight:600;
+    color: var(--ink);
+    background: var(--white);
+    border: 2px solid var(--ink);
+    cursor:pointer;
+    padding:6px 10px;
+    font-family: inherit;
+    text-transform:uppercase;
+  }
+  .switch-player:active{ transform: translate(2px,2px); }
+
+  main{
+    width:100%;
+    max-width:520px;
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    padding: 18px 20px 60px 20px;
+  }
+
+  .screen{ display:none; flex-direction:column; gap: 20px; }
+  .screen.active{ display:flex; }
+
+  h1{
+    font-weight:700;
+    font-size: 36px;
+    line-height:1.05;
+    margin: 10px 0 0 0;
+    letter-spacing: -0.02em;
+    text-transform:uppercase;
+  }
+  h1 .accent{
+    background: var(--blue);
+    color: var(--white);
+    padding: 0 6px;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+  }
+
+  p.lede{
+    font-size:15px;
+    color: var(--ink);
+    line-height:1.5;
+    margin:0;
+    max-width: 40ch;
+    font-weight:500;
+  }
+
+  label.field-label{
+    font-size:12px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:0.03em;
+    display:block;
+    margin-bottom:8px;
+  }
+
+  input[type="text"]{
+    width:100%;
+    background: var(--white);
+    border: 3px solid var(--ink);
+    border-radius: 0;
+    padding: 14px 16px;
+    color: var(--ink);
+    font-size:16px;
+    font-family: inherit;
+    font-weight:600;
+    outline:none;
+  }
+  input[type="text"]:focus{ background: #fffbe6; }
+
+  .btn{
+    appearance:none;
+    border: 3px solid var(--ink);
+    border-radius: 0;
+    cursor:pointer;
+    padding: 15px 22px;
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:700;
+    font-size:15px;
+    text-transform:uppercase;
+    letter-spacing:0.02em;
+    text-align:center;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    background: var(--white);
+    color: var(--ink);
+    box-shadow: var(--shadow-sm);
+    transition: none;
+  }
+  .btn:active{ transform: translate(4px,4px); box-shadow: 0 0 0 var(--ink); }
+  .btn-primary{ background: var(--blue); color: var(--white); }
+  .btn-ghost{ background: var(--white); color: var(--ink); }
+  .btn-block{ width:100%; }
+
+  .card{
+    background: var(--white);
+    border: 3px solid var(--ink);
+    border-radius: 0;
+    padding: 20px;
+    box-shadow: var(--shadow);
+  }
+
+  .greeting{
+    font-size: 28px;
+    font-weight:700;
+    text-transform:uppercase;
+    margin:0;
+    letter-spacing:-0.01em;
+  }
+  .home-stat{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:13px;
+    font-weight:600;
+    border: 2px solid var(--ink);
+    background: var(--white);
+    padding: 8px 10px;
+    display:inline-block;
+  }
+  .home-stat b{ color: var(--blue); }
+
+  .game-frame{
+    position:relative;
+    width:100%;
+    overflow:hidden;
+    border: 3px solid var(--ink);
+    box-shadow: var(--shadow);
+    background: var(--white);
+    cursor: crosshair;
+    user-select:none;
+    -webkit-user-select:none;
+  }
+  .game-frame img.grid-img{
+    display:block;
+    width:100%;
+    height:auto;
+    pointer-events:none;
+  }
+  .game-frame img.overlay-img{
+    position:absolute;
+    pointer-events:none;
+    z-index:3;
+    box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    -webkit-box-sizing: border-box;
+    border: 0 0 0 2px var(--ink);
+  }
+  .hud{
+    position:absolute;
+    top:10px; left:10px; right:10px;
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap: 8px;
+    z-index:5;
+    pointer-events:none;
+  }
+  .hud-instruction{
+    font-size:12px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:0.01em;
+    color: var(--ink);
+    background: var(--white);
+    border: 2px solid var(--ink);
+    box-shadow: 3px 3px 0 var(--ink);
+    padding: 7px 10px;
+  }
+  .hud-timer{
+    font-family:'IBM Plex Mono', monospace;
+    font-weight:700;
+    font-size:14px;
+    color: var(--ink);
+    background: var(--green);
+    border: 2px solid var(--ink);
+    box-shadow: 3px 3px 0 var(--ink);
+    padding: 7px 10px;
+    min-width: 54px;
+    text-align:center;
+    flex-shrink:0;
+  }
+  .miss-flash{
+    position:absolute;
+    inset:0;
+    background: var(--red);
+    opacity:0;
+    pointer-events:none;
+    transition: opacity 120ms ease;
+    z-index:4;
+    mix-blend-mode:multiply;
+  }
+  .miss-flash.show{ opacity:0.55; transition: none; }
+
+  .result-time{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 54px;
+    font-weight:700;
+    margin:0;
+    line-height:1;
+    background: var(--blue);
+    color: var(--white);
+    display:inline-block;
+    padding: 6px 14px;
+    border: 3px solid var(--ink);
+  }
+  .result-label{
+    font-size:12px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:0.03em;
+    margin:0 0 10px 0;
+  }
+  .best-badge{
+    display:inline-block;
+    font-size:12px;
+    font-weight:700;
+    text-transform:uppercase;
+    color: var(--ink);
+    background: var(--green);
+    border: 2px solid var(--ink);
+    padding:6px 10px;
+    margin-top:14px;
+  }
+  .btn-row{ display:flex; gap:10px; }
+  .btn-row .btn{ flex:1; }
+
+  .lb-section-title{
+    font-size:12px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:0.03em;
+    color: var(--ink);
+    margin: 0 0 10px 0;
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  ol.lb-list{
+    list-style:none;
+    margin:0;
+    padding:0;
+    display:flex;
+    flex-direction:column;
+  }
+  ol.lb-list li{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding: 10px 8px;
+    border-bottom: 2px solid var(--ink);
+    font-size:14px;
+    font-weight:600;
+  }
+  ol.lb-list li:last-child{ border-bottom:none; }
+  .lb-rank{
+    font-family:'IBM Plex Mono', monospace;
+    color: var(--ink);
+    width: 20px;
+    flex-shrink:0;
+    font-weight:700;
+  }
+  .lb-name{ flex:1; }
+  .lb-time{
+    font-family:'IBM Plex Mono', monospace;
+    color: var(--ink);
+    font-size:13px;
+    font-weight:700;
+  }
+  li.mine{ background: var(--green); margin: 0 -8px; padding-left:16px; padding-right:16px; }
+
+  .empty-note{
+    font-size:13px;
+    font-weight:500;
+    padding: 6px 0;
+  }
+
+  footer.export-row{
+    margin-top:4px;
+    display:flex;
+    justify-content:center;
+  }
+  .export-link{
+    font-size:12px;
+    font-weight:700;
+    text-transform:uppercase;
+    color: var(--ink);
+    background: var(--white);
+    border: 2px solid var(--ink);
+    cursor:pointer;
+    padding: 8px 12px;
+    font-family: inherit;
+  }
+  .export-link:active{ transform: translate(2px,2px); }
+
+  @media (max-width: 380px){
+    h1{ font-size:30px; }
+    .result-time{ font-size:44px; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="brand">
+    <div class="brand-mark">Spot The <b>Face</b></div>
+    <button class="switch-player" id="switchPlayerBtn" style="display:none;">Switch</button>
+  </div>
+
+  <main>
+
+    <!-- LOGIN -->
+    <section class="screen" id="screen-login">
+      <h1>Can you spot<br><span class="accent" id="loginTargetName">them</span> in the crowd?</h1>
+      <p class="lede">Enter a name to play. Your device remembers you, so next time you'll jump straight back in.</p>
+      <div class="card">
+        <label class="field-label" for="usernameInput">Your name</label>
+        <input type="text" id="usernameInput" placeholder="e.g. Sam" maxlength="24" autocomplete="off">
+      </div>
+      <button class="btn btn-primary btn-block" id="loginBtn">Let's go</button>
+    </section>
+
+    <!-- HOME -->
+    <section class="screen" id="screen-home">
+      <h1 class="greeting">Hey <span class="accent" id="homeUsername">there</span> 👋</h1>
+      <p class="lede" id="homeSub">Find <span id="homeTargetName">the target</span> hiding in the crowd, as fast as you can.</p>
+      <button class="btn btn-primary btn-block" id="playBtn">▶ Play now</button>
+      <div class="home-stat" id="homeBestStat"></div>
+
+      <div class="card">
+        <div class="lb-section-title">Latest plays</div>
+        <ol class="lb-list" id="homeLatestList"></ol>
+      </div>
+
+      <button class="btn btn-ghost btn-block" id="viewLeaderboardBtn">View full leaderboard</button>
+    </section>
+
+    <!-- GAME -->
+    <section class="screen" id="screen-game">
+      <div class="game-frame" id="gameFrame">
+        <div class="hud">
+          <div class="hud-instruction" id="hudInstruction">Tap on the photo</div>
+          <div class="hud-timer" id="hudTimer">0.0s</div>
+        </div>
+        <img class="grid-img" id="gridImg" src="images/grid.jpg" width="612" height="612" alt="Crowd of faces" draggable="false">
+        <img class="overlay-img" id="overlayImg" src="images/overlay.png" alt="Target marker" draggable="false">
+        <div class="miss-flash" id="missFlash"></div>
+      </div>
+    </section>
+
+    <!-- RESULT -->
+    <section class="screen" id="screen-result">
+      <div class="card" style="text-align:center;">
+        <p class="result-label" id="resultLabel">Found in</p>
+        <p class="result-time" id="resultTime">0.00s</p>
+        <div id="resultBadge"></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="playAgainBtn">Play again</button>
+        <button class="btn btn-ghost" id="resultLeaderboardBtn">Leaderboard</button>
+      </div>
+    </section>
+
+    <!-- LEADERBOARD -->
+    <section class="screen" id="screen-leaderboard">
+      <h1 style="font-size:26px;">Leaderboard</h1>
+
+      <div class="card">
+        <div class="lb-section-title">🏆 Fastest times</div>
+        <ol class="lb-list" id="fastestList"></ol>
+      </div>
+
+      <div class="card">
+        <div class="lb-section-title">🕐 Latest plays</div>
+        <ol class="lb-list" id="latestList"></ol>
+      </div>
+
+      <button class="btn btn-ghost btn-block" id="backHomeBtn">Back</button>
+
+      <footer class="export-row">
+        <button class="export-link" id="exportBtn">Export leaderboard.json</button>
+      </footer>
+    </section>
+
+  </main>
+
+<script>
+(function(){
+
+  // ---------- Storage keys ----------
+  var K_USERNAME = 'stf_username';
+  var K_SCORES = 'stf_scores'; // array of {username, time, timestamp} played on this device
+
+  // ---------- State ----------
+  var config = null;
+  var cellData = null;
+  var seedLeaderboard = [];
+  var localScores = loadLocalScores();
+  var currentCell = null;
+  var timerStart = null;
+  var timerInterval = null;
+  var scale = 1;
+
+  function loadLocalScores(){
+    try{
+      var raw = localStorage.getItem(K_SCORES);
+      return raw ? JSON.parse(raw) : [];
+    }catch(e){ return []; }
+  }
+  function saveLocalScores(){
+    localStorage.setItem(K_SCORES, JSON.stringify(localScores));
+  }
+  function getUsername(){
+    return localStorage.getItem(K_USERNAME);
+  }
+  function setUsername(name){
+    localStorage.setItem(K_USERNAME, name);
+  }
+
+  function combinedLeaderboard(){
+    return seedLeaderboard.concat(localScores);
+  }
+
+  // ---------- Screens ----------
+  var screens = {};
+  document.querySelectorAll('.screen').forEach(function(el){ screens[el.id] = el; });
+  function showScreen(id){
+    Object.keys(screens).forEach(function(k){ screens[k].classList.toggle('active', k === id); });
+    window.scrollTo(0,0);
+  }
+
+  // ---------- Load data ----------
+  Promise.all([
+    fetch('data/config.json').then(r => r.json()),
+    fetch('data/cells.json').then(r => r.json()),
+    fetch('data/leaderboard.json').then(r => r.json()).catch(function(){ return []; })
+  ]).then(function(results){
+    config = results[0];
+    cellData = results[1];
+    seedLeaderboard = results[2] || [];
+
+    document.getElementById('loginTargetName').textContent = config.targetName;
+    document.getElementById('homeTargetName').textContent = config.targetName;
+    document.getElementById('hudInstruction').textContent = config.instructionText;
+    document.getElementById('resultLabel').textContent = config.resultHeading || 'Found in';
+    document.getElementById('overlayImg').src = config.overlayImage;
+    document.getElementById('gridImg').src = config.gridImage;
+
+    init();
+  }).catch(function(err){
+    document.body.innerHTML = '<main><p style="padding:40px;color:#f5f1e8">Could not load game data. Make sure data/config.json, data/cells.json and data/leaderboard.json exist. (' + err + ')</p></main>';
+  });
+
+  function init(){
+    var user = getUsername();
+    if(user){
+      document.getElementById('switchPlayerBtn').style.display = 'inline-block';
+      renderHome(user);
+      showScreen('screen-home');
+    } else {
+      showScreen('screen-login');
+    }
+  }
+
+  // ---------- Login ----------
+  document.getElementById('loginBtn').addEventListener('click', function(){
+    var val = document.getElementById('usernameInput').value.trim();
+    if(!val){
+      document.getElementById('usernameInput').focus();
+      return;
+    }
+    setUsername(val);
+    document.getElementById('switchPlayerBtn').style.display = 'inline-block';
+    renderHome(val);
+    showScreen('screen-home');
+  });
+  document.getElementById('usernameInput').addEventListener('keydown', function(e){
+    if(e.key === 'Enter'){ document.getElementById('loginBtn').click(); }
+  });
+
+  document.getElementById('switchPlayerBtn').addEventListener('click', function(){
+    localStorage.removeItem(K_USERNAME);
+    document.getElementById('switchPlayerBtn').style.display = 'none';
+    document.getElementById('usernameInput').value = '';
+    showScreen('screen-login');
+  });
+
+  // ---------- Home ----------
+  function renderHome(user){
+    document.getElementById('homeUsername').textContent = user;
+
+    var mine = localScores.filter(function(s){ return s.username === user; });
+    var statEl = document.getElementById('homeBestStat');
+    if(mine.length){
+      var best = mine.reduce(function(a,b){ return b.time < a.time ? b : a; });
+      statEl.innerHTML = 'Your best: <b>' + best.time.toFixed(2) + 's</b> over ' + mine.length + ' play' + (mine.length>1?'s':'');
+    } else {
+      statEl.innerHTML = 'You haven\'t played yet — go find ' + (config ? config.targetName : 'them') + '.';
+    }
+
+    var latest = combinedLeaderboard()
+      .slice()
+      .sort(function(a,b){ return b.timestamp - a.timestamp; })
+      .slice(0,5);
+    renderList(document.getElementById('homeLatestList'), latest, user, false);
+  }
+
+  document.getElementById('playBtn').addEventListener('click', startGame);
+  document.getElementById('playAgainBtn').addEventListener('click', startGame);
+  document.getElementById('viewLeaderboardBtn').addEventListener('click', function(){ renderLeaderboard(); showScreen('screen-leaderboard'); });
+  document.getElementById('resultLeaderboardBtn').addEventListener('click', function(){ renderLeaderboard(); showScreen('screen-leaderboard'); });
+  document.getElementById('backHomeBtn').addEventListener('click', function(){ renderHome(getUsername()); showScreen('screen-home'); });
+
+  // ---------- Game ----------
+  function startGame(){
+    var cells = cellData.cells;
+    currentCell = cells[Math.floor(Math.random() * cells.length)];
+
+    showScreen('screen-game');
+    document.getElementById('overlayImg').style.visibility = 'hidden';
+
+    positionWhenReady(function(){
+      positionOverlay();
+      document.getElementById('overlayImg').style.visibility = 'visible';
+      timerStart = performance.now();
+      updateTimerDisplay(0);
+      timerInterval = setInterval(function(){
+        updateTimerDisplay((performance.now() - timerStart) / 1000);
+      }, 100);
+    });
+  }
+
+  // Wait until the grid image actually has a rendered width before we
+  // compute pixel positions from it (handles first-ever load, slow
+  // network, etc. instead of silently placing the overlay at 0,0).
+  function positionWhenReady(cb){
+    var img = document.getElementById('gridImg');
+    var attempts = 0;
+    function check(){
+      attempts++;
+      var rect = img.getBoundingClientRect();
+      if(rect.width > 0 && (img.complete || attempts > 30)){
+        cb();
+      } else if(attempts <= 30){
+        requestAnimationFrame(check);
+      } else {
+        cb(); // give up waiting, position with whatever we have
+      }
+    }
+    requestAnimationFrame(check);
+  }
+
+  function getScale(){
+    var img = document.getElementById('gridImg');
+    var rect = img.getBoundingClientRect();
+    return rect.width / cellData.imageWidth;
+  }
+
+  function positionOverlay(){
+    scale = getScale();
+    var overlay = document.getElementById('overlayImg');
+    var w = (currentCell.maxX - currentCell.minX) * scale;
+    var h = (currentCell.maxY - currentCell.minY) * scale;
+    overlay.style.left = (currentCell.minX * scale) + 'px';
+    overlay.style.top = (currentCell.minY * scale) + 'px';
+    overlay.style.width = w + 'px';
+    overlay.style.height = h + 'px';
+  }
+
+  window.addEventListener('resize', function(){
+    if(currentCell && screens['screen-game'].classList.contains('active')){
+      positionOverlay();
+    }
+  });
+
+  function updateTimerDisplay(seconds){
+    document.getElementById('hudTimer').textContent = seconds.toFixed(1) + 's';
+  }
+
+  document.getElementById('gameFrame').addEventListener('click', function(e){
+    if(!currentCell || timerStart === null) return;
+    var img = document.getElementById('gridImg');
+    var rect = img.getBoundingClientRect();
+    var s = getScale();
+    var x = (e.clientX - rect.left) / s;
+    var y = (e.clientY - rect.top) / s;
+
+    var hit = x >= currentCell.minX && x <= currentCell.maxX &&
+              y >= currentCell.minY && y <= currentCell.maxY;
+
+    if(hit){
+      finishGame();
+    } else {
+      flashMiss();
+    }
+  });
+
+  function flashMiss(){
+    var flash = document.getElementById('missFlash');
+    flash.classList.remove('show');
+    void flash.offsetWidth; // restart animation
+    flash.classList.add('show');
+    setTimeout(function(){
+      flash.style.transition = 'opacity 250ms ease';
+      flash.classList.remove('show');
+    }, 90);
+  }
+
+  function finishGame(){
+    clearInterval(timerInterval);
+    var elapsed = (performance.now() - timerStart) / 1000;
+    timerStart = null;
+
+    var user = getUsername();
+    var entry = { username: user, time: Math.round(elapsed * 100) / 100, timestamp: Date.now() };
+    localScores.push(entry);
+    saveLocalScores();
+
+    document.getElementById('resultTime').textContent = entry.time.toFixed(2) + 's';
+
+    var mine = localScores.filter(function(s){ return s.username === user; });
+    var best = mine.reduce(function(a,b){ return b.time < a.time ? b : a; });
+    var badge = document.getElementById('resultBadge');
+    if(best.timestamp === entry.timestamp){
+      badge.innerHTML = '<span class="best-badge">New personal best</span>';
+    } else {
+      badge.innerHTML = '';
+    }
+
+    showScreen('screen-result');
+  }
+
+  // ---------- Leaderboard ----------
+  function renderList(listEl, entries, currentUser, showRank){
+    listEl.innerHTML = '';
+    if(!entries.length){
+      listEl.innerHTML = '<li class="empty-note" style="border-bottom:none;">No plays yet — be the first.</li>';
+      return;
+    }
+    entries.forEach(function(entry, i){
+      var li = document.createElement('li');
+      if(entry.username === currentUser) li.classList.add('mine');
+      var rankHtml = showRank !== false ? '<span class="lb-rank">' + (i+1) + '</span>' : '<span class="lb-rank">•</span>';
+      li.innerHTML = rankHtml +
+        '<span class="lb-name">' + escapeHtml(entry.username) + '</span>' +
+        '<span class="lb-time">' + entry.time.toFixed(2) + 's</span>';
+      listEl.appendChild(li);
+    });
+  }
+
+  function renderLeaderboard(){
+    var user = getUsername();
+    var all = combinedLeaderboard();
+
+    var fastest = all.slice().sort(function(a,b){ return a.time - b.time; }).slice(0,5);
+    var latest = all.slice().sort(function(a,b){ return b.timestamp - a.timestamp; }).slice(0,5);
+
+    renderList(document.getElementById('fastestList'), fastest, user, true);
+    renderList(document.getElementById('latestList'), latest, user, false);
+  }
+
+  document.getElementById('exportBtn').addEventListener('click', function(){
+    var all = combinedLeaderboard().sort(function(a,b){ return a.timestamp - b.timestamp; });
+    var blob = new Blob([JSON.stringify(all, null, 2)], {type: 'application/json'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'leaderboard.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  function escapeHtml(str){
+    var div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+})();
+</script>
+</body>
+</html>
