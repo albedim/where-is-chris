@@ -368,7 +368,6 @@
 
   <div class="brand">
     <div class="brand-mark">Spot <b>Chris</b></div>
-    <!--<button class="switch-player" id="switchPlayerBtn" style="display:none;">Switch</button>-->
   </div>
 
   <main>
@@ -458,6 +457,9 @@
   var timerInterval = null;
   var scale = 1;
 
+  // The absolute URL for the Vercel API
+  var API_URL = 'https://project-b63x8-lylx9wujj-albedims-projects.vercel.app/api/leaderboard';
+
   function loadLocalScores(){
     try{
       var raw = localStorage.getItem(K_SCORES);
@@ -488,7 +490,8 @@
   Promise.all([
     fetch('data/config.json').then(r => r.json()),
     fetch('data/cells.json').then(r => r.json()),
-    fetch('data/leaderboard.json').then(r => r.json()).catch(function(){ return []; })
+    // GET: Fetch the live leaderboard from the Vercel backend using the absolute URL
+    fetch(API_URL).then(r => r.json()).catch(function(){ return []; })
   ]).then(function(results){
     config = results[0];
     cellData = results[1];
@@ -509,7 +512,6 @@
   function init(){
     var user = getUsername();
     if(user){
-      //document.getElementById('switchPlayerBtn').style.display = 'inline-block';
       renderHome(user);
       showScreen('screen-home');
     } else {
@@ -524,20 +526,12 @@
       return;
     }
     setUsername(val);
-    //document.getElementById('switchPlayerBtn').style.display = 'inline-block';
     renderHome(val);
     showScreen('screen-home');
   });
   document.getElementById('usernameInput').addEventListener('keydown', function(e){
     if(e.key === 'Enter'){ document.getElementById('loginBtn').click(); }
   });
-
-  /*document.getElementById('switchPlayerBtn').addEventListener('click', function(){
-    localStorage.removeItem(K_USERNAME);
-    document.getElementById('switchPlayerBtn').style.display = 'none';
-    document.getElementById('usernameInput').value = '';
-    showScreen('screen-login');
-  });*/
 
   function renderHome(user){
     document.getElementById('homeUsername').textContent = user;
@@ -551,7 +545,14 @@
       statEl.innerHTML = 'You haven\'t played yet — go find ' + (config ? config.targetName : 'them') + '.';
     }
 
-    var latest = combinedLeaderboard()
+    // Deduplicate for home screen
+    var allMap = new Map();
+    combinedLeaderboard().forEach(function(entry) {
+      allMap.set(entry.timestamp, entry);
+    });
+    var all = Array.from(allMap.values());
+
+    var latest = all
       .slice()
       .sort(function(a,b){ return b.timestamp - a.timestamp; })
       .slice(0,5);
@@ -582,9 +583,6 @@
     });
   }
 
-  // Wait until the grid image actually has a rendered width before we
-  // compute pixel positions from it (handles first-ever load, slow
-  // network, etc. instead of silently placing the overlay at 0,0).
   function positionWhenReady(cb){
     var img = document.getElementById('gridImg');
     var attempts = 0;
@@ -665,8 +663,23 @@
 
     var user = getUsername();
     var entry = { username: user, time: Math.round(elapsed * 100) / 100, timestamp: Date.now() };
+    
+    // Save locally for immediate offline feedback
     localScores.push(entry);
     saveLocalScores();
+
+    // POST: Send the new score to the Vercel backend using the absolute URL
+    fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(entry)
+    })
+    .then(r => r.json())
+    .then(data => {
+      // Keep local seedLeaderboard in sync with the server response
+      if (data.data) seedLeaderboard = data.data; 
+    })
+    .catch(err => console.error("Failed to sync leaderboard", err));
 
     document.getElementById('resultTime').textContent = entry.time.toFixed(2) + 's';
 
@@ -700,8 +713,28 @@
   }
 
   function renderLeaderboard(){
+    // GET: Pull the absolute latest from the backend before showing using the absolute URL
+    fetch(API_URL)
+      .then(r => r.json())
+      .then(data => {
+         if(Array.isArray(data)) seedLeaderboard = data;
+         drawLeaderboard();
+      })
+      .catch(err => {
+         drawLeaderboard(); // Fallback to drawing what we already have
+      });
+  }
+
+  function drawLeaderboard() {
     var user = getUsername();
-    var all = combinedLeaderboard();
+    
+    // Create a Map to deduplicate entries by timestamp so localScores don't double up 
+    // against the seedLeaderboard if they were successfully saved to the backend.
+    var allMap = new Map();
+    combinedLeaderboard().forEach(function(entry) {
+      allMap.set(entry.timestamp, entry);
+    });
+    var all = Array.from(allMap.values());
 
     var fastest = all.slice().sort(function(a,b){ return a.time - b.time; }).slice(0,5);
     var latest = all.slice().sort(function(a,b){ return b.timestamp - a.timestamp; }).slice(0,5);
@@ -711,7 +744,13 @@
   }
 
   document.getElementById('exportBtn').addEventListener('click', function(){
-    var all = combinedLeaderboard().sort(function(a,b){ return a.timestamp - b.timestamp; });
+    // Deduplicate before export
+    var allMap = new Map();
+    combinedLeaderboard().forEach(function(entry) {
+      allMap.set(entry.timestamp, entry);
+    });
+    var all = Array.from(allMap.values()).sort(function(a,b){ return a.timestamp - b.timestamp; });
+
     var blob = new Blob([JSON.stringify(all, null, 2)], {type: 'application/json'});
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
