@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Spot the Face</title>
+<title>Where is Chris</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
@@ -12,7 +12,7 @@
     --ink:#0d0d0d;
     --paper:#f4f2ec;
     --white:#ffffff;
-    --blue:#2b4bff;
+    --blue:#f5b01b;
     --red:#ff3b30;
     --green:#8bff5a;
     --line: var(--ink);
@@ -209,7 +209,7 @@
     box-sizing: border-box;
     -moz-box-sizing: border-box;
     -webkit-box-sizing: border-box;
-    border: 0 0 0 2px var(--ink);
+    border: 0 0 0 2px var(--white);
   }
   .hud{
     position:absolute;
@@ -367,16 +367,15 @@
 <body>
 
   <div class="brand">
-    <div class="brand-mark">Spot The <b>Face</b></div>
-    <button class="switch-player" id="switchPlayerBtn" style="display:none;">Switch</button>
+    <div class="brand-mark">Spot <b>Chris</b></div>
+    <!--<button class="switch-player" id="switchPlayerBtn" style="display:none;">Switch</button>-->
   </div>
 
   <main>
 
-    <!-- LOGIN -->
     <section class="screen" id="screen-login">
-      <h1>Can you spot<br><span class="accent" id="loginTargetName">them</span> in the crowd?</h1>
-      <p class="lede">Enter a name to play. Your device remembers you, so next time you'll jump straight back in.</p>
+      <h1>Let's see if the beanie works for this game too. Can you spot<br><span class="accent" id="loginTargetName">cmgriffing</span> in the crowd?</h1>
+      <p class="lede">Enter a name to play.</p>
       <div class="card">
         <label class="field-label" for="usernameInput">Your name</label>
         <input type="text" id="usernameInput" placeholder="e.g. Sam" maxlength="24" autocomplete="off">
@@ -384,10 +383,9 @@
       <button class="btn btn-primary btn-block" id="loginBtn">Let's go</button>
     </section>
 
-    <!-- HOME -->
     <section class="screen" id="screen-home">
       <h1 class="greeting">Hey <span class="accent" id="homeUsername">there</span> 👋</h1>
-      <p class="lede" id="homeSub">Find <span id="homeTargetName">the target</span> hiding in the crowd, as fast as you can.</p>
+      <p class="lede" id="homeSub">OH NO! <span id="homeTargetName">Chris</span> pushed to the main branch and hid in the crowd, as fast as you can.</p>
       <button class="btn btn-primary btn-block" id="playBtn">▶ Play now</button>
       <div class="home-stat" id="homeBestStat"></div>
 
@@ -399,7 +397,6 @@
       <button class="btn btn-ghost btn-block" id="viewLeaderboardBtn">View full leaderboard</button>
     </section>
 
-    <!-- GAME -->
     <section class="screen" id="screen-game">
       <div class="game-frame" id="gameFrame">
         <div class="hud">
@@ -412,7 +409,6 @@
       </div>
     </section>
 
-    <!-- RESULT -->
     <section class="screen" id="screen-result">
       <div class="card" style="text-align:center;">
         <p class="result-label" id="resultLabel">Found in</p>
@@ -425,7 +421,6 @@
       </div>
     </section>
 
-    <!-- LEADERBOARD -->
     <section class="screen" id="screen-leaderboard">
       <h1 style="font-size:26px;">Leaderboard</h1>
 
@@ -451,11 +446,9 @@
 <script>
 (function(){
 
-  // ---------- Storage keys ----------
   var K_USERNAME = 'stf_username';
   var K_SCORES = 'stf_scores'; // array of {username, time, timestamp} played on this device
 
-  // ---------- State ----------
   var config = null;
   var cellData = null;
   var seedLeaderboard = [];
@@ -485,7 +478,6 @@
     return seedLeaderboard.concat(localScores);
   }
 
-  // ---------- Screens ----------
   var screens = {};
   document.querySelectorAll('.screen').forEach(function(el){ screens[el.id] = el; });
   function showScreen(id){
@@ -493,7 +485,6 @@
     window.scrollTo(0,0);
   }
 
-  // ---------- Load data ----------
   Promise.all([
     fetch('data/config.json').then(r => r.json()),
     fetch('data/cells.json').then(r => r.json()),
@@ -518,7 +509,7 @@
   function init(){
     var user = getUsername();
     if(user){
-      document.getElementById('switchPlayerBtn').style.display = 'inline-block';
+      //document.getElementById('switchPlayerBtn').style.display = 'inline-block';
       renderHome(user);
       showScreen('screen-home');
     } else {
@@ -526,7 +517,6 @@
     }
   }
 
-  // ---------- Login ----------
   document.getElementById('loginBtn').addEventListener('click', function(){
     var val = document.getElementById('usernameInput').value.trim();
     if(!val){
@@ -534,7 +524,7 @@
       return;
     }
     setUsername(val);
-    document.getElementById('switchPlayerBtn').style.display = 'inline-block';
+    //document.getElementById('switchPlayerBtn').style.display = 'inline-block';
     renderHome(val);
     showScreen('screen-home');
   });
@@ -542,14 +532,13 @@
     if(e.key === 'Enter'){ document.getElementById('loginBtn').click(); }
   });
 
-  document.getElementById('switchPlayerBtn').addEventListener('click', function(){
+  /*document.getElementById('switchPlayerBtn').addEventListener('click', function(){
     localStorage.removeItem(K_USERNAME);
     document.getElementById('switchPlayerBtn').style.display = 'none';
     document.getElementById('usernameInput').value = '';
     showScreen('screen-login');
-  });
+  });*/
 
-  // ---------- Home ----------
   function renderHome(user){
     document.getElementById('homeUsername').textContent = user;
 
@@ -575,7 +564,6 @@
   document.getElementById('resultLeaderboardBtn').addEventListener('click', function(){ renderLeaderboard(); showScreen('screen-leaderboard'); });
   document.getElementById('backHomeBtn').addEventListener('click', function(){ renderHome(getUsername()); showScreen('screen-home'); });
 
-  // ---------- Game ----------
   function startGame(){
     var cells = cellData.cells;
     currentCell = cells[Math.floor(Math.random() * cells.length)];
@@ -694,7 +682,6 @@
     showScreen('screen-result');
   }
 
-  // ---------- Leaderboard ----------
   function renderList(listEl, entries, currentUser, showRank){
     listEl.innerHTML = '';
     if(!entries.length){
